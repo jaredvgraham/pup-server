@@ -17,6 +17,8 @@ RUN npm ci
 # Copy the rest of the application code to the working directory
 COPY . .
 
+RUN npm run build
+
 # Expose the port that the application will run on
 EXPOSE 3001
 
