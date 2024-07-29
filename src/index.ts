@@ -50,10 +50,22 @@ const handleScreenshot = async (url: string): Promise<Buffer> => {
     ],
   });
   const page = await browser.newPage();
-  await page.goto(url, { waitUntil: "networkidle0" });
+
+  page.on("console", (msg) => console.log("PAGE LOG:", msg.text()));
+
+  await page.goto(url, { waitUntil: "networkidle0", timeout: 60000 });
+
+  // Additional wait to ensure PDF is fully rendered
+  await timeout(5000);
+
   const screenshot = await page.screenshot({ fullPage: true });
   await browser.close();
   return screenshot;
+};
+
+// Custom timeout function
+const timeout = (ms: number) => {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
 app.post("/screenshot", authenticate, async (req: Request, res: Response) => {
