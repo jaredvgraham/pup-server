@@ -36,6 +36,8 @@ const authenticate = (req: Request, res: Response, next: NextFunction) => {
 };
 
 const handleScreenshot = async (url: string): Promise<Buffer> => {
+  console.log("Taking screenshot of", url);
+
   const browser = await puppeteer.launch({
     headless: true,
     executablePath:
@@ -50,13 +52,14 @@ const handleScreenshot = async (url: string): Promise<Buffer> => {
     ],
   });
   const page = await browser.newPage();
+  console.log("on page");
 
   page.on("console", (msg) => console.log("PAGE LOG:", msg.text()));
 
   await page.goto(url, { waitUntil: "networkidle0", timeout: 60000 });
 
   // Additional wait to ensure PDF is fully rendered
-  await timeout(5000);
+  await timeout(10000);
 
   const screenshot = await page.screenshot({ fullPage: true });
   await browser.close();
