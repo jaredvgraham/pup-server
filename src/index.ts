@@ -65,6 +65,7 @@ app.post("/screenshot", authenticate, async (req: Request, res: Response) => {
   try {
     const screenshot = await handleScreenshot(url);
     res.type("image/png").send(screenshot);
+    console.log("Screenshot taken successfully");
   } catch (error) {
     console.error("Error taking screenshot:", error);
     res.status(500).json({ error: "Internal Server Error" });
