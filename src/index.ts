@@ -3,6 +3,9 @@ import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import puppeteer from "puppeteer";
+import { join } from "path";
+import { writeFile, unlink } from "fs/promises";
+import fs from "fs";
 
 dotenv.config();
 
@@ -68,6 +71,55 @@ app.post("/screenshot", authenticate, async (req: Request, res: Response) => {
     console.log("Screenshot taken successfully");
   } catch (error) {
     console.error("Error taking screenshot:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+const handleResumeAlter = async (htmlContent: string): Promise<Buffer> => {
+  const uploadDir = join(process.cwd(), "uploads");
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true }); // Create directory recursively
+  }
+  const htmlPath = join(uploadDir, "resume.html");
+
+  await writeFile(htmlPath, htmlContent);
+  console.log("html file written", htmlPath);
+
+  const browser = await puppeteer.launch({
+    headless: true,
+    executablePath:
+      process.env.NODE_ENV === "production"
+        ? process.env.PUPPETEER_EXECUTABLE_PATH
+        : puppeteer.executablePath(),
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--single-process",
+      "--no-zygote",
+    ],
+  });
+  const page = await browser.newPage();
+  await page.goto(`file://${htmlPath}`, { waitUntil: "networkidle0" });
+  const pdfBuffer = await page.pdf({ format: "A4" });
+  await browser.close();
+  await unlink(htmlPath);
+  return pdfBuffer;
+};
+
+app.post("/alter-resume", authenticate, async (req: Request, res: Response) => {
+  const { htmlContent } = req.body;
+
+  if (!htmlContent) {
+    console.error("Validation failed: No HTML content provided");
+    return res.status(400).json({ error: "No HTML content" });
+  }
+
+  try {
+    const pdfBuffer = await handleResumeAlter(htmlContent);
+    res.type("application/pdf").send(pdfBuffer);
+    console.log("PDF generated successfully");
+  } catch (error) {
+    console.error("Error generating PDF:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
